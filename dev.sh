@@ -36,7 +36,7 @@ check_if_already_in_path_beg() {
 # $1: "${BASH_SOURCE[0]}"
 # $2: parameter name where script path is to be stored
 Get_script_path() {
-    [[ "${1}" && "${2}" ]] || { Eecho "ERROR: Get_script_path needs two parameters."; return 1; }
+    [[ "${1}" && "${2}" ]] || { echo "ERROR: Get_script_path needs two parameters." 1>&2; return 1; }
 
     # get script path
     local script_path="${1}";
