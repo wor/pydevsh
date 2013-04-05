@@ -1,10 +1,11 @@
 #!/bin/bash
 # Source this script.
-# Given "-2" as option to use python 2.
+# Given "-2" as option uses python2.
+# Given "-v" as option tries to be more verbose.
 
 # This script uses distributes develop command to create a dev environment where
 # python distribution package under the same directory as this script can be
-# imported and should be prefered for import before installed packages with same name.
+# imported and should be preferred for import before installed packages with same name.
 #
 # If package with same name is also installed then this does not always work and the installed
 # package is imported instead. This can happen if distribution package contains namespace
@@ -84,16 +85,25 @@ quit() {
 }
 
 main() {
-    local PYTHON_BIN
+    local PYTHON_BIN="python"
     local SCRIPT_PATH
     local DEV_INSTALL_DIR
+    local VERBOSE=0
 
-    # Explicitly use python 2 if "-2" given as option
-    PYTHON_BIN="python"; [[ "${1}" == "-2" ]] && PYTHON_BIN="python2";
+    # Process command line arguments
+    local check_count=2
+    while [[ "${@}" ]] && (( check_count > 0)); do
+        # Explicitly use python 2 if "-2" given as option
+        [[ "${1}" == "-2" ]] && { shift; PYTHON_BIN="python2"; }
+        # Be more verbose if "-v" given
+        [[ "${1}" == "-v" ]] && { shift; VERBOSE=1; }
+        (( --check_count ))
+    done
 
     Get_script_path "${BASH_SOURCE[0]}" SCRIPT_PATH
     DEV_INSTALL_DIR="/tmp/$(cd ${SCRIPT_PATH}; ${PYTHON_BIN} setup.py --name)-dev-${PYTHON_BIN}"
 
+    (( VERBOSE > 0 )) && echo "This script was is located at '${SCRIPT_PATH}'."
     if [[ "$(pwd)" != "${SCRIPT_PATH}" ]]; then
         pushd . > /dev/null
         cd "${SCRIPT_PATH}"
@@ -105,11 +115,14 @@ main() {
 
     mkdir -p "${DEV_INSTALL_DIR}" || quit 1
 
+    (( VERBOSE > 0 )) && echo "Adding path '${DEV_INSTALL_DIR}' to PYTHONPATH."
     addToPathBeg $DEV_INSTALL_DIR PYTHONPATH
+    (( VERBOSE > 0 )) && echo "Adding path '${DEV_INSTALL_DIR}' to PATH."
     addToPathBeg $DEV_INSTALL_DIR
     export PYTHONPATH
+    (( VERBOSE > 0 )) && echo "Current PYTHONPATH: ${PYTHONPATH}"
 
-    echo $SCRIPT_PATH
+    (( VERBOSE > 0 )) && echo "Running command: ${PYTHON_BIN} ${_setup} develop -d $DEV_INSTALL_DIR"
     ${PYTHON_BIN} ${_setup} develop -d $DEV_INSTALL_DIR
 }
 
