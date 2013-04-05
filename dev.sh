@@ -116,4 +116,4 @@ main() {
 declare _path_changed="false"
 
 main "${@}"
-quit 0
+quit $?
