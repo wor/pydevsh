@@ -14,15 +14,33 @@
 # This check must be the first line
 [[ $_ != $0 ]] || { echo "Error: source this script." 1>&2; exit 1; }
 
+# Oh let's warn the user if we are going to pollute his/her precious shell environment.
+# And by the way *I HATE* bash.
+type "__PYDEVSH__function_names" &>/dev/null && echo "Warning: This script removes '$i' variable from the current shell environment." 1>&2
+__PYDEVSH__check_env_names() {
+    local func_names_array="${1}[@]"
+    local var_names_array="${2}[@]"
+
+    local i;
+    for i in ${!func_names_array} ${!var_names_array}; do
+        [[ "${i}" == $FUNCNAME ]] && continue
+        type "${i}" &>/dev/null && echo "Warning: This script removes '$i' variable from the current shell environment." 1>&2
+    done
+}
+
+__PYDEVSH__function_names=(__PYDEVSH__check_env_names __PYDEVSH__cleanup __PYDEVSH__addToPathBeg __PYDEVSH__get_script_path __PYDEVSH__check_if_already_in_path_beg __PYDEVSH__addToVarBeg __PYDEVSH__main __PYDEVSH__vecho)
+__PYDEVSH__variable_names=(__PYDEVSH__function_names __PYDEVSH__variable_names __PYDEVSH___path_changed)
+__PYDEVSH__check_env_names __PYDEVSH__function_names __PYDEVSH__variable_names
+
 # Adds the $2 param to the beginning of the $1 variable
-addToVarBeg() {
+__PYDEVSH__addToVarBeg() {
     export $1="${2}${!1}"
 }
 
 # Check if PATH contains given path already in the beginning.
 # $1: content which is checked against PATH variable.
 # $2: Alternative PATH like variable to work on, default is the "PATH"
-check_if_already_in_path_beg() {
+__PYDEVSH__check_if_already_in_path_beg() {
     local _path_var="PATH"
     [ -n "${2}" ] && _path_var="${2}"
 
@@ -36,11 +54,11 @@ check_if_already_in_path_beg() {
 # $1? Optional "--no-follow" option to stop symlink following.
 # $1: Script path.
 # $2: Parameter name where script path is to be stored.
-get_script_path() {
+__PYDEVSH__get_script_path() {
     local no_follow=""
     local script_path=""
     [[ "${1}" == "--no-follow" ]] && { no_follow="yes"; shift; }
-    [[ "${1}" && "${2}" ]] || { echo "ERROR: get_script_path needs two parameters." 1>&2; return 1; }
+    [[ "${1}" && "${2}" ]] || { echo "ERROR: __PYDEVSH__get_script_path needs two parameters." 1>&2; return 1; }
 
     # Get script path
     script_path="${1}";
@@ -64,12 +82,12 @@ get_script_path() {
 # Adds the $1 param to the beginning of PATH variable
 # $1:
 # $2: Alternative PATH like variable to work on, default is the "PATH"
-addToPathBeg() {
-    if ! check_if_already_in_path_beg ${1} ${2}; then
+__PYDEVSH__addToPathBeg() {
+    if ! __PYDEVSH__check_if_already_in_path_beg ${1} ${2}; then
         local _path_var="PATH"
         [ -n "${2}" ] && _path_var="${2}"
         if [[ "${!_path_var}" ]]; then
-            addToVarBeg "${_path_var}" "${1}:"
+            __PYDEVSH__addToVarBeg "${_path_var}" "${1}:"
         else
             # In case if path variable is empty
             printf -v "${_path_var}" "%s" "${1}"
@@ -79,23 +97,23 @@ addToPathBeg() {
 
 # Clean-up function
 # $1: Return value
-cleanup() {
-    if [[ "${_path_changed}" == "true" ]]; then
+__PYDEVSH__cleanup() {
+    if [[ "${__PYDEVSH___path_changed}" == "true" ]]; then
         popd > /dev/null
     fi
 
     # Avoid shell environment namespace pollution
-    unset -v _path_changed
-    unset -f cleanup addToPathBeg get_script_path check_if_already_in_path_beg addToVarBeg main vecho
+    unset -f ${__PYDEVSH__function_names[@]}
+    unset -v ${__PYDEVSH__variable_names_names[@]}
 
     return ${1}
 }
 
-vecho() {
+__PYDEVSH__vecho() {
    (( VERBOSE > 0 )) && echo $@
 }
 
-main() {
+__PYDEVSH__main() {
     local TMP_BASE_PATH="/tmp"
     local PYTHON_BIN="python"
     local SCRIPT_PATH
@@ -112,42 +130,42 @@ main() {
         (( --check_count ))
     done
 
-    get_script_path --no-follow "${BASH_SOURCE[0]}" SCRIPT_PATH
-    vecho "This script was is located at '${SCRIPT_PATH}'."
+    __PYDEVSH__get_script_path --no-follow "${BASH_SOURCE[0]}" SCRIPT_PATH
+    __PYDEVSH__vecho "This script was is located at '${SCRIPT_PATH}'."
 
     # Check if setup.py is located at script path
     local _setup="setup.py"
-    [[ -e "${SCRIPT_PATH}/${_setup}" ]] || { echo "Error: No '${_setup}' found from: ${SCRIPT_PATH}." 1>&2; cleanup 1; return $?; }
+    [[ -e "${SCRIPT_PATH}/${_setup}" ]] || { echo "Error: No '${_setup}' found from: ${SCRIPT_PATH}." 1>&2; __PYDEVSH__cleanup 1; return $?; }
 
     # Change dir to SCRIPT_PATH if needed
     if [[ "$(pwd)" != "${SCRIPT_PATH}" ]]; then
         pushd . > /dev/null
         cd "${SCRIPT_PATH}"
-        _path_changed="true" # global var
+        __PYDEVSH___path_changed="true" # global var
     fi
 
     # Get tmp dev install path
     DEV_INSTALL_DIR="${TMP_BASE_PATH}/$(${PYTHON_BIN} ${_setup} --name)-dev-${PYTHON_BIN}" || {
         local retval=$?
         echo "Error: Running ${_setup} from '${SCRIPT_PATH}' failed." 1>&2
-        vecho "The command was: '${PYTHON_BIN} ${_setup} --name)-dev-${PYTHON_BIN}'."
+        __PYDEVSH__vecho "The command was: '${PYTHON_BIN} ${_setup} --name)-dev-${PYTHON_BIN}'."
         return ${retval}
     }
 
-    mkdir -p "${DEV_INSTALL_DIR}" || { cleanup 1; return $?; }
+    mkdir -p "${DEV_INSTALL_DIR}" || { __PYDEVSH__cleanup 1; return $?; }
 
-    vecho "Adding path '${DEV_INSTALL_DIR}' to PYTHONPATH."
-    addToPathBeg $DEV_INSTALL_DIR PYTHONPATH
-    vecho "Adding path '${DEV_INSTALL_DIR}' to PATH."
-    addToPathBeg $DEV_INSTALL_DIR
+    __PYDEVSH__vecho "Adding path '${DEV_INSTALL_DIR}' to PYTHONPATH."
+    __PYDEVSH__addToPathBeg $DEV_INSTALL_DIR PYTHONPATH
+    __PYDEVSH__vecho "Adding path '${DEV_INSTALL_DIR}' to PATH."
+    __PYDEVSH__addToPathBeg $DEV_INSTALL_DIR
     export PYTHONPATH
-    vecho "Current PYTHONPATH: ${PYTHONPATH}"
+    __PYDEVSH__vecho "Current PYTHONPATH: ${PYTHONPATH}"
 
-    vecho "Running command: ${PYTHON_BIN} ${_setup} develop -d $DEV_INSTALL_DIR"
+    __PYDEVSH__vecho "Running command: ${PYTHON_BIN} ${_setup} develop -d $DEV_INSTALL_DIR"
     ${PYTHON_BIN} ${_setup} develop -d $DEV_INSTALL_DIR
-    cleanup 0
+    __PYDEVSH__cleanup 0
 }
 
-declare _path_changed="false"
+declare __PYDEVSH___path_changed="false"
 
-main "${@}"
+__PYDEVSH__main "${@}"
