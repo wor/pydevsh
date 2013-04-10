@@ -12,7 +12,7 @@
 # packages for example.
 
 # This check must be the first line
-[[ $_ != $0 ]] || { echo "Error: source this script."; exit 1; }
+[[ $_ != $0 ]] || { echo "Error: source this script." 1>&2; exit 1; }
 
 # Adds the $2 param to the beginning of the $1 variable
 addToVarBeg() {
@@ -33,25 +33,32 @@ check_if_already_in_path_beg() {
 }
 
 # Gets current scripts path when given "${BASH_SOURCE[0]}" as parameter
-# $1: "${BASH_SOURCE[0]}"
-# $2: parameter name where script path is to be stored
+# $1? Optional "--no-follow" option to stop symlink following.
+# $1: Script path.
+# $2: Parameter name where script path is to be stored.
 Get_script_path() {
+    local no_follow=""
+    local script_path=""
+    [[ "${1}" == "--no-follow" ]] && { no_follow="yes"; shift; }
     [[ "${1}" && "${2}" ]] || { echo "ERROR: Get_script_path needs two parameters." 1>&2; return 1; }
 
-    # get script path
-    local script_path="${1}";
+    # Get script path
+    script_path="${1}";
 
-    # unlink path
-    if [ -h "${script_path}" ]; then
-        while [ -h "${script_path}" ]; do script_path=`readlink "${script_path}"`; done
+    # Unlink path if not --no-follow given
+    if [[ "${no_follow}" != "yes" && -h "${script_path}" ]]; then
+        while [[ -h "${script_path}" ]]; do script_path=$(readlink "${script_path}"); done
     fi
 
-    pushd . > /dev/null
-    cd "$(dirname "${script_path}")" > /dev/null
-    script_path="$(pwd)";
-    popd  > /dev/null
+    # Absolutify path
+    {
+        pushd .
+        cd "$(dirname "${script_path}")"
+        script_path="$(pwd)"
+        popd
+    } > /dev/null
 
-    eval "${2}"="\${script_path}"
+    printf -v "${2}" "%s" "${script_path}"
 }
 
 # Adds the $1 param to the beginning of PATH variable
@@ -100,14 +107,18 @@ main() {
         (( --check_count ))
     done
 
-    Get_script_path "${BASH_SOURCE[0]}" SCRIPT_PATH
-    DEV_INSTALL_DIR="/tmp/$(cd ${SCRIPT_PATH}; ${PYTHON_BIN} setup.py --name)-dev-${PYTHON_BIN}"
+    Get_script_path --no-follow "${BASH_SOURCE[0]}" SCRIPT_PATH
+    DEV_INSTALL_DIR="/tmp/$(cd ${SCRIPT_PATH}; ${PYTHON_BIN} setup.py --name)-dev-${PYTHON_BIN}" || {
+        local retval=$?
+        echo "Error: Running setup.py from '${SCRIPT_PATH}' failed." 1>&2
+        return ${retval}
+    }
 
     (( VERBOSE > 0 )) && echo "This script was is located at '${SCRIPT_PATH}'."
     if [[ "$(pwd)" != "${SCRIPT_PATH}" ]]; then
         pushd . > /dev/null
         cd "${SCRIPT_PATH}"
-        _path_changed="true"
+        _path_changed="true" # global var
     fi
 
     _setup="setup.py"
