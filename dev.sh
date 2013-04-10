@@ -36,11 +36,11 @@ check_if_already_in_path_beg() {
 # $1? Optional "--no-follow" option to stop symlink following.
 # $1: Script path.
 # $2: Parameter name where script path is to be stored.
-Get_script_path() {
+get_script_path() {
     local no_follow=""
     local script_path=""
     [[ "${1}" == "--no-follow" ]] && { no_follow="yes"; shift; }
-    [[ "${1}" && "${2}" ]] || { echo "ERROR: Get_script_path needs two parameters." 1>&2; return 1; }
+    [[ "${1}" && "${2}" ]] || { echo "ERROR: get_script_path needs two parameters." 1>&2; return 1; }
 
     # Get script path
     script_path="${1}";
@@ -77,21 +77,26 @@ addToPathBeg() {
     fi
 }
 
-# Clean up function
-# $1: return value
-quit() {
+# Clean-up function
+# $1: Return value
+cleanup() {
     if [[ "${_path_changed}" == "true" ]]; then
         popd > /dev/null
     fi
 
     # Avoid shell environment namespace pollution
     unset -v _path_changed
-    unset -f quit addToPathBeg Get_script_path check_if_already_in_path_beg addToVarBeg main
+    unset -f cleanup addToPathBeg get_script_path check_if_already_in_path_beg addToVarBeg main vecho
 
     return ${1}
 }
 
+vecho() {
+   (( VERBOSE > 0 )) && echo $@
+}
+
 main() {
+    local TMP_BASE_PATH="/tmp"
     local PYTHON_BIN="python"
     local SCRIPT_PATH
     local DEV_INSTALL_DIR
@@ -107,37 +112,42 @@ main() {
         (( --check_count ))
     done
 
-    Get_script_path --no-follow "${BASH_SOURCE[0]}" SCRIPT_PATH
-    DEV_INSTALL_DIR="/tmp/$(cd ${SCRIPT_PATH}; ${PYTHON_BIN} setup.py --name)-dev-${PYTHON_BIN}" || {
-        local retval=$?
-        echo "Error: Running setup.py from '${SCRIPT_PATH}' failed." 1>&2
-        return ${retval}
-    }
+    get_script_path --no-follow "${BASH_SOURCE[0]}" SCRIPT_PATH
+    vecho "This script was is located at '${SCRIPT_PATH}'."
 
-    (( VERBOSE > 0 )) && echo "This script was is located at '${SCRIPT_PATH}'."
+    # Check if setup.py is located at script path
+    local _setup="setup.py"
+    [[ -e "${SCRIPT_PATH}/${_setup}" ]] || { echo "Error: No '${_setup}' found from: ${SCRIPT_PATH}." 1>&2; cleanup 1; return $?; }
+
+    # Change dir to SCRIPT_PATH if needed
     if [[ "$(pwd)" != "${SCRIPT_PATH}" ]]; then
         pushd . > /dev/null
         cd "${SCRIPT_PATH}"
         _path_changed="true" # global var
     fi
 
-    _setup="setup.py"
-    [ -e "${_setup}" ] || { echo "No ${_setup} found from: $(pwd)."; quit 1; }
+    # Get tmp dev install path
+    DEV_INSTALL_DIR="${TMP_BASE_PATH}/$(${PYTHON_BIN} ${_setup} --name)-dev-${PYTHON_BIN}" || {
+        local retval=$?
+        echo "Error: Running ${_setup} from '${SCRIPT_PATH}' failed." 1>&2
+        vecho "The command was: '${PYTHON_BIN} ${_setup} --name)-dev-${PYTHON_BIN}'."
+        return ${retval}
+    }
 
-    mkdir -p "${DEV_INSTALL_DIR}" || quit 1
+    mkdir -p "${DEV_INSTALL_DIR}" || { cleanup 1; return $?; }
 
-    (( VERBOSE > 0 )) && echo "Adding path '${DEV_INSTALL_DIR}' to PYTHONPATH."
+    vecho "Adding path '${DEV_INSTALL_DIR}' to PYTHONPATH."
     addToPathBeg $DEV_INSTALL_DIR PYTHONPATH
-    (( VERBOSE > 0 )) && echo "Adding path '${DEV_INSTALL_DIR}' to PATH."
+    vecho "Adding path '${DEV_INSTALL_DIR}' to PATH."
     addToPathBeg $DEV_INSTALL_DIR
     export PYTHONPATH
-    (( VERBOSE > 0 )) && echo "Current PYTHONPATH: ${PYTHONPATH}"
+    vecho "Current PYTHONPATH: ${PYTHONPATH}"
 
-    (( VERBOSE > 0 )) && echo "Running command: ${PYTHON_BIN} ${_setup} develop -d $DEV_INSTALL_DIR"
+    vecho "Running command: ${PYTHON_BIN} ${_setup} develop -d $DEV_INSTALL_DIR"
     ${PYTHON_BIN} ${_setup} develop -d $DEV_INSTALL_DIR
+    cleanup 0
 }
 
 declare _path_changed="false"
 
 main "${@}"
-quit $?
