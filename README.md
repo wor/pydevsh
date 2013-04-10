@@ -1,7 +1,7 @@
 pydevsh
 =========
 
-Simple bash script to help python project development.
+Simple bash script to help Python project development.
 
 Should be placed on the projects root directory. To the same directory where
 setup.py is usually located.
