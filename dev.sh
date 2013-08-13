@@ -130,7 +130,11 @@ __PYDEVSH__main() {
         (( --check_count ))
     done
 
-    __PYDEVSH__get_script_path --no-follow "${BASH_SOURCE[0]}" SCRIPT_PATH
+    __PYDEVSH__get_script_path --no-follow "${BASH_SOURCE[0]}" SCRIPT_PATH || {
+        local retval=$?
+        __PYDEVSH__cleanup 1;
+        return ${retval}
+    }
     __PYDEVSH__vecho "This script was is located at '${SCRIPT_PATH}'."
 
     # Check if setup.py is located at script path
@@ -149,6 +153,7 @@ __PYDEVSH__main() {
         local retval=$?
         echo "Error: Running ${_setup} from '${SCRIPT_PATH}' failed." 1>&2
         __PYDEVSH__vecho "The command was: '${PYTHON_BIN} ${_setup} --name)-dev-${PYTHON_BIN}'."
+        __PYDEVSH__cleanup 1;
         return ${retval}
     }
 
