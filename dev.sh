@@ -16,7 +16,8 @@
 
 # Oh let's warn the user if we are going to pollute his/her precious shell environment.
 # And by the way *I HATE* bash.
-type "__PYDEVSH__function_names" &>/dev/null && echo "Warning: This script removes '$i' variable from the current shell environment." 1>&2
+type "__PYDEVSH__function_names" &>/dev/null && \
+    echo "Warning: This script removes '$i' variable from the current shell environment." 1>&2
 __PYDEVSH__check_env_names() {
     local func_names_array="${1}[@]"
     local var_names_array="${2}[@]"
@@ -24,7 +25,8 @@ __PYDEVSH__check_env_names() {
     local i;
     for i in ${!func_names_array} ${!var_names_array}; do
         [[ "${i}" == $FUNCNAME ]] && continue
-        type "${i}" &>/dev/null && echo "Warning: This script removes '$i' variable from the current shell environment." 1>&2
+        type "${i}" &>/dev/null \
+            && echo "Warning: This script removes '$i' variable from the current shell environment." 1>&2
     done
 }
 
@@ -58,7 +60,10 @@ __PYDEVSH__get_script_path() {
     local no_follow=""
     local script_path=""
     [[ "${1}" == "--no-follow" ]] && { no_follow="yes"; shift; }
-    [[ "${1}" && "${2}" ]] || { echo "ERROR: __PYDEVSH__get_script_path needs two parameters." 1>&2; return 1; }
+    [[ "${1}" && "${2}" ]] || {
+        echo "ERROR: __PYDEVSH__get_script_path needs two parameters." 1>&2
+        return 1
+    }
 
     # Get script path
     script_path="${1}";
@@ -139,7 +144,12 @@ __PYDEVSH__main() {
 
     # Check if setup.py is located at script path
     local _setup="setup.py"
-    [[ -e "${SCRIPT_PATH}/${_setup}" ]] || { echo "Error: No '${_setup}' found from: ${SCRIPT_PATH}." 1>&2; __PYDEVSH__cleanup 1; return $?; }
+    [[ -e "${SCRIPT_PATH}/${_setup}" ]] || {
+        local retval=$?
+        echo "Error: No '${_setup}' found from: ${SCRIPT_PATH}." 1>&2
+        __PYDEVSH__cleanup 1
+        return ${retval}
+    }
 
     # Change dir to SCRIPT_PATH if needed
     if [[ "$(pwd)" != "${SCRIPT_PATH}" ]]; then
