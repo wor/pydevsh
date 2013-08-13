@@ -30,8 +30,19 @@ __PYDEVSH__check_env_names() {
     done
 }
 
-__PYDEVSH__function_names=(__PYDEVSH__check_env_names __PYDEVSH__cleanup __PYDEVSH__addToPathBeg __PYDEVSH__get_script_path __PYDEVSH__check_if_already_in_path_beg __PYDEVSH__addToVarBeg __PYDEVSH__main __PYDEVSH__vecho)
-__PYDEVSH__variable_names=(__PYDEVSH__function_names __PYDEVSH__variable_names __PYDEVSH___path_changed)
+__PYDEVSH__function_names=(__PYDEVSH__check_env_names
+__PYDEVSH__cleanup
+__PYDEVSH__addToPathBeg
+__PYDEVSH__get_script_path
+__PYDEVSH__check_if_already_in_path_beg
+__PYDEVSH__addToVarBeg
+__PYDEVSH__main
+__PYDEVSH__vecho)
+
+__PYDEVSH__variable_names=(__PYDEVSH__function_names 
+__PYDEVSH__variable_names
+__PYDEVSH___path_changed)
+
 __PYDEVSH__check_env_names __PYDEVSH__function_names __PYDEVSH__variable_names
 
 # Adds the $2 param to the beginning of the $1 variable
