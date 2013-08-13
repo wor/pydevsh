@@ -39,7 +39,7 @@ __PYDEVSH__addToVarBeg
 __PYDEVSH__main
 __PYDEVSH__vecho)
 
-__PYDEVSH__variable_names=(__PYDEVSH__function_names 
+__PYDEVSH__variable_names=(__PYDEVSH__function_names
 __PYDEVSH__variable_names
 __PYDEVSH___path_changed)
 
