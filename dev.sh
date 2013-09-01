@@ -36,6 +36,7 @@ __PYDEVSH__addToPathBeg
 __PYDEVSH__get_script_path
 __PYDEVSH__check_if_already_in_path_beg
 __PYDEVSH__addToVarBeg
+__PYDEVSH__rundev
 __PYDEVSH__main
 __PYDEVSH__vecho)
 
@@ -129,11 +130,48 @@ __PYDEVSH__vecho() {
    (( VERBOSE > 0 )) && echo $@
 }
 
+__PYDEVSH_rundev() {
+    local script_path="${1}"
+    local dev_install_dir
+
+    # Change dir to SCRIPT_PATH if needed
+    if [[ "$(pwd)" != "${SCRIPT_PATH}" ]]; then
+        pushd . > /dev/null
+        cd "${SCRIPT_PATH}"
+        __PYDEVSH___path_changed="true" # global var
+    fi
+
+    # Get tmp dev install path
+    dev_install_dir="${TMP_BASE_PATH}/$(${PYTHON_BIN} ${_setup} --name)-dev-${PYTHON_BIN}" || {
+        local retval=$?
+        echo "Error: Running ${_setup} from '${SCRIPT_PATH}' failed." 1>&2
+        __PYDEVSH__vecho "The command was: '${PYTHON_BIN} ${_setup} --name)-dev-${PYTHON_BIN}'."
+        __PYDEVSH__cleanup 1;
+        return ${retval}
+    }
+
+    mkdir -p "${dev_install_dir}" || { __PYDEVSH__cleanup 1; return $?; }
+
+    __PYDEVSH__vecho "Adding path '${dev_install_dir}' to PYTHONPATH."
+    __PYDEVSH__addToPathBeg $dev_install_dir PYTHONPATH
+    __PYDEVSH__vecho "Adding path '${dev_install_dir}' to PATH."
+    __PYDEVSH__addToPathBeg $dev_install_dir
+    export PYTHONPATH
+    __PYDEVSH__vecho "Current PYTHONPATH: ${PYTHONPATH}"
+
+    __PYDEVSH__vecho "Running command: ${PYTHON_BIN} ${_setup} develop -d $dev_install_dir"
+    ${PYTHON_BIN} ${_setup} develop -d $dev_install_dir
+
+    if [[ "${__PYDEVSH___path_changed}" == "true" ]]; then
+        popd > /dev/null
+        __PYDEVSH___path_changed="false" # global var
+    fi
+}
+
 __PYDEVSH__main() {
     local TMP_BASE_PATH="/tmp"
     local PYTHON_BIN="python"
     local SCRIPT_PATH
-    local DEV_INSTALL_DIR
     local VERBOSE=0
 
     # Process command line arguments
@@ -162,33 +200,8 @@ __PYDEVSH__main() {
         return ${retval}
     }
 
-    # Change dir to SCRIPT_PATH if needed
-    if [[ "$(pwd)" != "${SCRIPT_PATH}" ]]; then
-        pushd . > /dev/null
-        cd "${SCRIPT_PATH}"
-        __PYDEVSH___path_changed="true" # global var
-    fi
+    __PYDEVSH_rundev "${SCRIPT_PATH}"
 
-    # Get tmp dev install path
-    DEV_INSTALL_DIR="${TMP_BASE_PATH}/$(${PYTHON_BIN} ${_setup} --name)-dev-${PYTHON_BIN}" || {
-        local retval=$?
-        echo "Error: Running ${_setup} from '${SCRIPT_PATH}' failed." 1>&2
-        __PYDEVSH__vecho "The command was: '${PYTHON_BIN} ${_setup} --name)-dev-${PYTHON_BIN}'."
-        __PYDEVSH__cleanup 1;
-        return ${retval}
-    }
-
-    mkdir -p "${DEV_INSTALL_DIR}" || { __PYDEVSH__cleanup 1; return $?; }
-
-    __PYDEVSH__vecho "Adding path '${DEV_INSTALL_DIR}' to PYTHONPATH."
-    __PYDEVSH__addToPathBeg $DEV_INSTALL_DIR PYTHONPATH
-    __PYDEVSH__vecho "Adding path '${DEV_INSTALL_DIR}' to PATH."
-    __PYDEVSH__addToPathBeg $DEV_INSTALL_DIR
-    export PYTHONPATH
-    __PYDEVSH__vecho "Current PYTHONPATH: ${PYTHONPATH}"
-
-    __PYDEVSH__vecho "Running command: ${PYTHON_BIN} ${_setup} develop -d $DEV_INSTALL_DIR"
-    ${PYTHON_BIN} ${_setup} develop -d $DEV_INSTALL_DIR
     __PYDEVSH__cleanup 0
 }
 
