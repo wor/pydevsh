@@ -137,17 +137,17 @@ __PYDEVSH_rundev() {
     local script_path="${1}"
     local dev_install_dir
 
-    # Change dir to SCRIPT_PATH if needed
-    if [[ "$(pwd)" != "${SCRIPT_PATH}" ]]; then
+    # Change dir to script_path if needed
+    if [[ "$(pwd)" != "${script_path}" ]]; then
         pushd . > /dev/null
-        cd "${SCRIPT_PATH}"
+        cd "${script_path}"
         __PYDEVSH___path_changed="true" # global var
     fi
 
     # Get tmp dev install path
     dev_install_dir="${TMP_BASE_PATH}/$(${PYTHON_BIN} ${_setup} --name)-dev-${PYTHON_BIN}" || {
         local retval=$?
-        echo "Error: Running ${_setup} from '${SCRIPT_PATH}' failed." 1>&2
+        echo "Error: Running ${_setup} from '${script_path}' failed." 1>&2
         __PYDEVSH__vecho "The command was: '${PYTHON_BIN} ${_setup} --name)-dev-${PYTHON_BIN}'."
         __PYDEVSH__cleanup 1;
         return ${retval}
