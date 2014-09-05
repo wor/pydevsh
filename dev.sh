@@ -119,6 +119,9 @@ __PYDEVSH__cleanup() {
         popd > /dev/null
     fi
 
+    # Restore CDPATH
+    CDPATH="${ORGINAL_CDPATH}"
+
     # Avoid shell environment namespace pollution
     unset -f ${__PYDEVSH__function_names[@]}
     unset -v ${__PYDEVSH__variable_names_names[@]}
@@ -169,6 +172,7 @@ __PYDEVSH_rundev() {
 }
 
 __PYDEVSH__main() {
+    local ORGINAL_CDPATH="${CDPATH}"; unset CDPATH
     local TMP_BASE_PATH="/tmp"
     local PYTHON_BIN="python"
     local SCRIPT_PATH
