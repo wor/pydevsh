@@ -206,6 +206,22 @@ __PYDEVSH__main() {
 
     __PYDEVSH_rundev "${SCRIPT_PATH}"
 
+    # Run develop also for dependencies
+    # TODO: be recursive
+    #if [[ -e "${SCRIPT_PATH}/.dev-deps" ]]; then
+    #    __PYDEVSH__vecho "Checking local dependencies from: ${SCRIPT_PATH}/.dev-deps"
+    #    local -a dep_lpaths=($(cut -f1 -d' ' "${SCRIPT_PATH}/.dev-deps"))
+    #    # Remotes can be handled with setup.py
+    #    #local -a dep_remotes=($(cut -f2 -d' ' "${SCRIPT_PATH}/.dev-deps"))
+    #    local lp
+    #    for lp in "${dep_lpaths[@]/\~/${HOME}}"; do
+    #        if [[ -e ${lp}/setup.py ]]; then
+    #            __PYDEVSH__vecho "Rundev '${lp}'."
+    #            __PYDEVSH_rundev "${lp}"
+    #        fi
+    #    done
+    #fi
+
     __PYDEVSH__cleanup 0
 }
 
